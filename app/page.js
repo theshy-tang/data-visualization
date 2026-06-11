@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import {
@@ -29,6 +30,34 @@ ChartJS.register(
   Legend
 );
 
+function FadeUp({
+  children,
+  delay = 0,
+  duration = 0.7,
+  y = 24,
+  className,
+  style,
+  as = 'div',
+  once = true,
+  ...props
+}) {
+  const Tag = motion[as];
+
+  return (
+    <Tag
+      className={className}
+      style={style}
+      {...props}
+      initial={{ opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once, amount: 0.2 }}
+      transition={{ duration, delay, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </Tag>
+  );
+}
+
 export default function Home() {
   const [data, setData] = useState(null);
   const [chartType, setChartType] = useState('line');
@@ -52,6 +81,7 @@ export default function Home() {
   const [showXFilterModal, setShowXFilterModal] = useState(false);
   const [xFilterEnabled, setXFilterEnabled] = useState(false);
   const [xFilterSearch, setXFilterSearch] = useState('');
+  const heroWords = 'WE BUILD END-TO-END AI AUTOMATION SYSTEMS.'.split(' ');
 
   const fileInputRef = useRef(null);
   const chartRef = useRef(null);
@@ -328,7 +358,18 @@ export default function Home() {
         : [...prev, header]
     );
   };  return (
-    <div className={`app-container ${darkMode ? 'dark' : ''}`}>
+    <div className={`app-container ${darkMode ? 'dark' : ''} ${!data ? 'video-upload-mode' : ''}`}>
+      {!data && (
+        <video
+          className="fixed-bg-video"
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260514_135830_bb6491d1-9b66-4aec-9722-13b4dfe3fb46.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-hidden="true"
+        />
+      )}
       <div className="main-content">
         <header className="app-header">
           <div className="header-left">
@@ -346,54 +387,73 @@ export default function Home() {
 
         <main className="app-main">
           {!data ? (
-            <div className="upload-start">
-              <section className="upload-intro">
-                <div className="upload-kicker">数据导入</div>
-                <h2>把广告数据表拖进来，开始分析</h2>
-                <p>保留原始行数据，上传后继续选择维度、指标和筛选条件。</p>
-                <div className="format-list" aria-label="支持的文件格式">
-                  <span>CSV</span>
-                  <span>XLSX</span>
-                  <span>XLS</span>
-                </div>
-              </section>
+            <section className="upload-hero">
+              <div className="upload-content">
+                <h2
+                  className="upload-hero-heading"
+                  aria-label="WE BUILD END-TO-END AI AUTOMATION SYSTEMS."
+                >
+                  {heroWords.map((word, index) => (
+                    <FadeUp
+                      as="span"
+                      y={32}
+                      delay={0.15 + index * 0.08}
+                      key={`${word}-${index}`}
+                      aria-hidden="true"
+                    >
+                      {word}
+                    </FadeUp>
+                  ))}
+                </h2>
 
-              <section
-                className={`upload-zone ${isDragging ? 'dragging' : ''}`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    fileInputRef.current?.click();
-                  }
-                }}
-              >
-                <div className="upload-card-icon" aria-hidden="true">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-                <div className="upload-copy">
-                  <h3>上传数据文件</h3>
-                  <p>拖拽到这里，或点击选择文件</p>
-                </div>
-                <span className="upload-action">
-                  选择文件
-                </span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={(e) => handleFileUpload(e.target.files[0])}
-                  style={{ display: 'none' }}
-                />
-              </section>
-            </div>
+                <FadeUp as="p" className="upload-hero-subtext" delay={0.9} y={24}>
+                  We provide all-in-one AI automation services in one place.
+                </FadeUp>
+
+                <FadeUp
+                  className={`upload-zone ${isDragging ? 'dragging' : ''}`}
+                  delay={1.05}
+                  y={24}
+                  onDragOver={handleDragOver}
+                >
+                  <div
+                    className="upload-zone-inner"
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                  >
+                    <div className="upload-card-icon" aria-hidden="true">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                    <div className="upload-copy">
+                      <h3>上传数据文件</h3>
+                      <p>拖拽到这里，或点击选择文件</p>
+                    </div>
+                    <span className="upload-action">
+                      选择文件
+                    </span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={(e) => handleFileUpload(e.target.files[0])}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                </FadeUp>
+              </div>
+            </section>
           ) : (
             <>
               <div className="controls-section">

@@ -8,12 +8,13 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
     "chart.js": "^4.4.0",
-    "react-chartjs-2": "^5.2.0",
+    "framer-motion": "^12.40.0",
+    "next": "latest",
     "papaparse": "^5.4.1",
+    "react": "latest",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "latest",
     "xlsx": "^0.18.5"
   }
 }
