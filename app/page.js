@@ -127,29 +127,32 @@ export default function Home() {
     if (file) handleFileUpload(file);
   };
 
-  const xAxisUniqueValues = useMemo(() => {
+  const xAxisFilterOptions = useMemo(() => {
     if (!data || !selectedX) return [];
-    const values = data.map(row => String(row[selectedX]));
-    return [...new Set(values)].sort();
+    return data.map((row, index) => ({
+      id: String(index),
+      value: String(row[selectedX] ?? ''),
+      rowNumber: index + 1
+    }));
   }, [data, selectedX]);
 
   const filteredXValues = useMemo(() => {
-    if (!xFilterSearch) return xAxisUniqueValues;
-    return xAxisUniqueValues.filter(value => 
-      String(value).toLowerCase().includes(xFilterSearch.toLowerCase())
+    if (!xFilterSearch) return xAxisFilterOptions;
+    return xAxisFilterOptions.filter(({ value }) => 
+      value.toLowerCase().includes(xFilterSearch.toLowerCase())
     );
-  }, [xAxisUniqueValues, xFilterSearch]);
+  }, [xAxisFilterOptions, xFilterSearch]);
 
-  const handleXValueToggle = (value) => {
+  const handleXValueToggle = (id) => {
     setSelectedXValues(prev =>
-      prev.includes(value)
-        ? prev.filter(v => v !== value)
-        : [...prev, value]
+      prev.includes(id)
+        ? prev.filter(v => v !== id)
+        : [...prev, id]
     );
   };
 
   const handleSelectAllX = () => {
-    setSelectedXValues(filteredXValues);
+    setSelectedXValues(filteredXValues.map(({ id }) => id));
   };
 
   const handleClearAllX = () => {
@@ -163,34 +166,22 @@ export default function Home() {
     if (!data || selectedY.length === 0) return null;
 
     const filteredByX = (xFilterEnabled && selectedXValues.length > 0)
-      ? data.filter(row => selectedXValues.includes(String(row[selectedX])))
+      ? data.filter((_, index) => selectedXValues.includes(String(index)))
       : data;
 
-    const groupedData = {};
-    filteredByX.forEach(row => {
-      const xVal = String(row[selectedX]);
-      if (!groupedData[xVal]) {
-        groupedData[xVal] = [];
-      }
-      groupedData[xVal].push(row);
-    });
-
-    const labels = Object.keys(groupedData).sort();
+    const labels = filteredByX.map(row => String(row[selectedX] ?? ''));
 
     if (chartType === 'pie') {
       const yKey = selectedY[0];
-      const aggregated = labels.map(label => {
-        const rows = groupedData[label];
-        return rows.reduce((sum, row) => {
-          const val = parseFloat(row[yKey]);
-          return sum + (isNaN(val) ? 0 : val);
-        }, 0);
+      const values = filteredByX.map(row => {
+        const val = parseFloat(row[yKey]);
+        return isNaN(val) ? 0 : val;
       });
 
       return {
         labels,
         datasets: [{
-          data: aggregated,
+          data: values,
           backgroundColor: customColors,
           borderWidth: 2,
           borderColor: darkMode ? '#1f2937' : '#fff'
@@ -199,17 +190,14 @@ export default function Home() {
     }
 
     const datasets = selectedY.map((yKey, idx) => {
-      const aggregated = labels.map(label => {
-        const rows = groupedData[label];
-        return rows.reduce((sum, row) => {
-          const val = parseFloat(row[yKey]);
-          return sum + (isNaN(val) ? 0 : val);
-        }, 0);
+      const values = filteredByX.map(row => {
+        const val = parseFloat(row[yKey]);
+        return isNaN(val) ? 0 : val;
       });
 
       return {
         label: yKey,
-        data: aggregated,
+        data: values,
         backgroundColor: customColors[idx % customColors.length],
         borderColor: customColors[idx % customColors.length],
         borderWidth: 2,
@@ -219,6 +207,12 @@ export default function Home() {
 
     return { labels, datasets };
   }, [data, selectedX, selectedY, chartType, customColors, darkMode, xFilterEnabled, selectedXValues]);
+
+  const chartMinWidth = useMemo(() => {
+    if (!chartData || chartType === 'pie') return '100%';
+    const widthPerLabel = chartType === 'bar' ? 52 : 44;
+    return `${Math.max(900, chartData.labels.length * widthPerLabel)}px`;
+  }, [chartData, chartType]);
 
   const getChartOptions = (type) => {
     const baseOptions = {
@@ -249,7 +243,10 @@ export default function Home() {
         x: {
           ticks: { 
             color: darkMode ? '#d1d5db' : '#4b5563',
-            font: { size: 12 }
+            font: { size: 12 },
+            autoSkip: false,
+            maxRotation: 45,
+            minRotation: 0
           },
           grid: { 
             color: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' 
@@ -430,7 +427,7 @@ export default function Home() {
                         className="btn-filter"
                         onClick={() => setShowXFilterModal(true)}
                       >
-                        筛选X轴数据 ({selectedXValues.length}/{xAxisUniqueValues.length})
+                        筛选X轴数据 ({selectedXValues.length}/{xAxisFilterOptions.length})
                       </button>
                     )}
                   </div>
@@ -501,14 +498,15 @@ export default function Home() {
                         </span>
                       </div>
                       <div className="filter-list">
-                        {filteredXValues.map(value => (
-                          <label key={value} className="filter-item">
+                        {filteredXValues.map(({ id, value, rowNumber }) => (
+                          <label key={id} className="filter-item">
                             <input
                               type="checkbox"
-                              checked={selectedXValues.includes(value)}
-                              onChange={() => handleXValueToggle(value)}
+                              checked={selectedXValues.includes(id)}
+                              onChange={() => handleXValueToggle(id)}
                             />
-                            <span>{value}</span>
+                            <span className="filter-item-value">{value}</span>
+                            <span className="filter-item-row">第 {rowNumber} 行</span>
                           </label>
                         ))}
                       </div>
@@ -519,7 +517,8 @@ export default function Home() {
                   </div>
                 </div>
               )}              <div className="chart-section">
-                <div className="chart-container">
+                <div className="chart-scroll">
+                  <div className="chart-container" style={{ minWidth: chartMinWidth }}>
                   {!chartData ? (
                     <div className="chart-placeholder">
                       请选择X轴和Y轴数据
@@ -531,6 +530,7 @@ export default function Home() {
                       {chartType === 'pie' && selectedY.length === 1 && <Pie ref={chartRef} data={chartData} options={getChartOptions('pie')} />}
                     </>
                   )}
+                  </div>
                 </div>
               </div>
 

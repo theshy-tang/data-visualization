@@ -595,6 +595,22 @@ body {
   color: #f3f4f6;
 }
 
+.filter-item-value {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.filter-item-row {
+  flex: 0 0 auto;
+  color: #6b7280 !important;
+  font-size: 13px;
+}
+
+.dark .filter-item-row {
+  color: #9ca3af !important;
+}
+
 .modal-footer {
   padding: 20px 28px;
   border-top: 2px solid #e5e7eb;
@@ -635,11 +651,18 @@ body {
   box-shadow: 0 1px 3px rgba(255,255,255,0.05);
 }
 
+.chart-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+}
+
 .chart-container {
   height: 450px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
 }
 
 .chart-placeholder {
