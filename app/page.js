@@ -214,12 +214,21 @@ export default function Home() {
     return `${Math.max(900, chartData.labels.length * widthPerLabel)}px`;
   }, [chartData, chartType]);
 
+  const chartLegendItems = useMemo(() => {
+    if (!chartData || chartType === 'pie') return [];
+    return chartData.datasets.map(dataset => ({
+      label: dataset.label,
+      color: dataset.borderColor || dataset.backgroundColor
+    }));
+  }, [chartData, chartType]);
+
   const getChartOptions = (type) => {
     const baseOptions = {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: {
+          display: type === 'pie',
           position: 'top',
           labels: {
             color: darkMode ? '#e5e7eb' : '#374151',
@@ -407,8 +416,9 @@ export default function Home() {
                   </div>
 
                   <div className="control-group x-filter-group">
-                    <div className="filter-toggle">
-                      <label>
+                    <label>X轴筛选</label>
+                    <div className={`x-filter-control ${xFilterEnabled ? 'active' : ''}`}>
+                      <label className="filter-toggle">
                         <input
                           type="checkbox"
                           checked={xFilterEnabled}
@@ -419,17 +429,18 @@ export default function Home() {
                             }
                           }}
                         />
-                        启用X轴筛选
+                        <span>启用</span>
                       </label>
-                    </div>
-                    {xFilterEnabled && (
                       <button
                         className="btn-filter"
+                        disabled={!xFilterEnabled}
                         onClick={() => setShowXFilterModal(true)}
                       >
-                        筛选X轴数据 ({selectedXValues.length}/{xAxisFilterOptions.length})
+                        {xFilterEnabled
+                          ? `筛选数据 (${selectedXValues.length}/${xAxisFilterOptions.length})`
+                          : '先启用筛选'}
                       </button>
-                    )}
+                    </div>
                   </div>
 
                   <div className="control-group">
@@ -517,6 +528,19 @@ export default function Home() {
                   </div>
                 </div>
               )}              <div className="chart-section">
+                {chartLegendItems.length > 0 && (
+                  <div className="chart-legend" aria-label="图例">
+                    {chartLegendItems.map(item => (
+                      <div className="chart-legend-item" key={item.label}>
+                        <span
+                          className="chart-legend-swatch"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="chart-scroll">
                   <div className="chart-container" style={{ minWidth: chartMinWidth }}>
                   {!chartData ? (
@@ -535,7 +559,7 @@ export default function Home() {
               </div>
 
               <div className="filter-panel">
-                <div className="filter-group">
+                <div className="filter-group filter-column-group">
                   <label>筛选列</label>
                   <select value={filterColumn} onChange={(e) => setFilterColumn(e.target.value)}>
                     <option value="all">全部列</option>
