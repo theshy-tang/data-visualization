@@ -1,7 +1,6 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import {
@@ -30,34 +29,6 @@ ChartJS.register(
   Legend
 );
 
-function FadeUp({
-  children,
-  delay = 0,
-  duration = 0.7,
-  y = 24,
-  className,
-  style,
-  as = 'div',
-  once = true,
-  ...props
-}) {
-  const Tag = motion[as];
-
-  return (
-    <Tag
-      className={className}
-      style={style}
-      {...props}
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once, amount: 0.2 }}
-      transition={{ duration, delay, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
-    </Tag>
-  );
-}
-
 export default function Home() {
   const [data, setData] = useState(null);
   const [chartType, setChartType] = useState('line');
@@ -81,7 +52,6 @@ export default function Home() {
   const [showXFilterModal, setShowXFilterModal] = useState(false);
   const [xFilterEnabled, setXFilterEnabled] = useState(false);
   const [xFilterSearch, setXFilterSearch] = useState('');
-  const heroWords = 'WE BUILD END-TO-END AI AUTOMATION SYSTEMS.'.split(' ');
 
   const fileInputRef = useRef(null);
   const chartRef = useRef(null);
@@ -358,101 +328,88 @@ export default function Home() {
         : [...prev, header]
     );
   };  return (
-    <div className={`app-container ${darkMode ? 'dark' : ''} ${!data ? 'video-upload-mode' : ''}`}>
-      {!data && (
-        <video
-          className="fixed-bg-video"
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260514_135830_bb6491d1-9b66-4aec-9722-13b4dfe3fb46.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-          aria-hidden="true"
-        />
-      )}
+    <div className={`app-container ${darkMode ? 'dark' : ''} ${!data ? 'cinematic-upload-mode' : ''}`}>
       <div className="main-content">
-        <header className="app-header">
-          <div className="header-left">
-            <h1>数据可视化分析平台</h1>
-            {fileName && <span className="file-badge">{fileName}</span>}
-          </div>
-          <button 
-            className="theme-toggle" 
-            onClick={() => setDarkMode(!darkMode)}
-            title="切换主题"
-          >
-            {darkMode ? '☀️' : '🌙'}
-          </button>
-        </header>
+        {data && (
+          <header className="app-header">
+            <div className="header-left">
+              <h1>数据可视化分析平台</h1>
+              {fileName && <span className="file-badge">{fileName}</span>}
+            </div>
+            <button 
+              className="theme-toggle" 
+              onClick={() => setDarkMode(!darkMode)}
+              title="切换主题"
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+          </header>
+        )}
 
         <main className="app-main">
           {!data ? (
-            <section className="upload-hero">
-              <div className="upload-content">
-                <h2
-                  className="upload-hero-heading"
-                  aria-label="WE BUILD END-TO-END AI AUTOMATION SYSTEMS."
-                >
-                  {heroWords.map((word, index) => (
-                    <FadeUp
-                      as="span"
-                      y={32}
-                      delay={0.15 + index * 0.08}
-                      key={`${word}-${index}`}
-                      aria-hidden="true"
-                    >
-                      {word}
-                    </FadeUp>
-                  ))}
-                </h2>
+            <section
+              className={`cinematic-hero ${isDragging ? 'dragging' : ''}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <video
+                className="hero-video"
+                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                aria-hidden="true"
+              />
 
-                <FadeUp as="p" className="upload-hero-subtext" delay={0.9} y={24}>
-                  We provide all-in-one AI automation services in one place.
-                </FadeUp>
-
-                <FadeUp
-                  className={`upload-zone ${isDragging ? 'dragging' : ''}`}
-                  delay={1.05}
-                  y={24}
-                  onDragOver={handleDragOver}
+              <nav className="hero-nav" aria-label="Primary">
+                <div className="hero-logo" style={{ fontFamily: "'Instrument Serif', serif" }}>
+                  Velorah<sup>®</sup>
+                </div>
+                <div className="hero-links">
+                  <a className="active" href="#">Home</a>
+                  <a href="#">Studio</a>
+                  <a href="#">About</a>
+                  <a href="#">Journal</a>
+                  <a href="#">Reach Us</a>
+                </div>
+                <button
+                  className="liquid-glass hero-nav-cta"
+                  onClick={() => fileInputRef.current?.click()}
+                  type="button"
                 >
-                  <div
-                    className="upload-zone-inner"
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        fileInputRef.current?.click();
-                      }
-                    }}
-                  >
-                    <div className="upload-card-icon" aria-hidden="true">
-                      <span></span>
-                      <span></span>
-                      <span></span>
-                    </div>
-                    <div className="upload-copy">
-                      <h3>上传数据文件</h3>
-                      <p>拖拽到这里，或点击选择文件</p>
-                    </div>
-                    <span className="upload-action">
-                      选择文件
-                    </span>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".xlsx,.xls,.csv"
-                      onChange={(e) => handleFileUpload(e.target.files[0])}
-                      style={{ display: 'none' }}
-                    />
-                  </div>
-                </FadeUp>
+                  Begin Journey
+                </button>
+              </nav>
+
+              <div className="hero-content">
+                <h1
+                  className="hero-title animate-fade-rise"
+                  style={{ fontFamily: "'Instrument Serif', serif" }}
+                >
+                  Where <em>dreams</em> rise <em>through the silence.</em>
+                </h1>
+                <p className="hero-subtitle animate-fade-rise-delay">
+                  We're designing tools for deep thinkers, bold creators, and quiet rebels. Amid the chaos, we build digital spaces for sharp focus and inspired work.
+                </p>
+                <button
+                  className="liquid-glass hero-main-cta animate-fade-rise-delay-2"
+                  onClick={() => fileInputRef.current?.click()}
+                  type="button"
+                >
+                  Begin Journey
+                </button>
               </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={(e) => handleFileUpload(e.target.files[0])}
+                style={{ display: 'none' }}
+              />
             </section>
           ) : (
             <>

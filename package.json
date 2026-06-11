@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "chart.js": "^4.4.0",
-    "framer-motion": "^12.40.0",
     "next": "latest",
     "papaparse": "^5.4.1",
     "react": "latest",
