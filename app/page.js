@@ -346,24 +346,53 @@ export default function Home() {
 
         <main className="app-main">
           {!data ? (
-            <div 
-              className={`upload-zone ${isDragging ? 'dragging' : ''}`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <div className="upload-icon">📊</div>
-              <h2>上传数据文件</h2>
-              <p>拖拽文件到此处，或点击选择文件</p>
-              <p className="file-hint">支持 .xlsx, .xls, .csv 格式</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={(e) => handleFileUpload(e.target.files[0])}
-                style={{ display: 'none' }}
-              />
+            <div className="upload-start">
+              <section className="upload-intro">
+                <div className="upload-kicker">数据导入</div>
+                <h2>把广告数据表拖进来，开始分析</h2>
+                <p>保留原始行数据，上传后继续选择维度、指标和筛选条件。</p>
+                <div className="format-list" aria-label="支持的文件格式">
+                  <span>CSV</span>
+                  <span>XLSX</span>
+                  <span>XLS</span>
+                </div>
+              </section>
+
+              <section
+                className={`upload-zone ${isDragging ? 'dragging' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
+              >
+                <div className="upload-card-icon" aria-hidden="true">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <div className="upload-copy">
+                  <h3>上传数据文件</h3>
+                  <p>拖拽到这里，或点击选择文件</p>
+                </div>
+                <span className="upload-action">
+                  选择文件
+                </span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => handleFileUpload(e.target.files[0])}
+                  style={{ display: 'none' }}
+                />
+              </section>
             </div>
           ) : (
             <>
