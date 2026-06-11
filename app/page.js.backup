@@ -129,8 +129,8 @@ export default function Home() {
 
   const xAxisUniqueValues = useMemo(() => {
     if (!data || !selectedX) return [];
-    const values = data.map(row => String(row[selectedX]));
-    return [...new Set(values)].sort();
+    const values = [...new Set(data.map(row => String(row[selectedX])))];
+    return values.sort();
   }, [data, selectedX]);
 
   const filteredXValues = useMemo(() => {
@@ -159,66 +159,51 @@ export default function Home() {
   const handleConfirmXFilter = () => {
     setShowXFilterModal(false);
     setXFilterSearch('');
-  };  const chartData = useMemo(() => {
+  };
+
+  const chartData = useMemo(() => {
     if (!data || selectedY.length === 0) return null;
 
     const filteredByX = (xFilterEnabled && selectedXValues.length > 0)
       ? data.filter(row => selectedXValues.includes(String(row[selectedX])))
       : data;
 
+    // 按 X 轴值分组并聚合 Y 值
     const groupedData = {};
     filteredByX.forEach(row => {
-      const xVal = String(row[selectedX]);
-      if (!groupedData[xVal]) {
-        groupedData[xVal] = [];
+      const xValue = String(row[selectedX]);
+      if (!groupedData[xValue]) {
+        groupedData[xValue] = {};
+        selectedY.forEach(yCol => {
+          groupedData[xValue][yCol] = [];
+        });
       }
-      groupedData[xVal].push(row);
+      selectedY.forEach(yCol => {
+        const yValue = parseFloat(row[yCol]) || 0;
+        groupedData[xValue][yCol].push(yValue);
+      });
     });
 
+    // 生成唯一的 labels 和聚合后的数据
     const labels = Object.keys(groupedData).sort();
-
-    if (chartType === 'pie') {
-      const yKey = selectedY[0];
-      const aggregated = labels.map(label => {
-        const rows = groupedData[label];
-        return rows.reduce((sum, row) => {
-          const val = parseFloat(row[yKey]);
-          return sum + (isNaN(val) ? 0 : val);
-        }, 0);
-      });
-
-      return {
-        labels,
-        datasets: [{
-          data: aggregated,
-          backgroundColor: customColors,
-          borderWidth: 2,
-          borderColor: darkMode ? '#1f2937' : '#fff'
-        }]
-      };
-    }
-
-    const datasets = selectedY.map((yKey, idx) => {
-      const aggregated = labels.map(label => {
-        const rows = groupedData[label];
-        return rows.reduce((sum, row) => {
-          const val = parseFloat(row[yKey]);
-          return sum + (isNaN(val) ? 0 : val);
-        }, 0);
-      });
-
-      return {
-        label: yKey,
-        data: aggregated,
-        backgroundColor: customColors[idx % customColors.length],
-        borderColor: customColors[idx % customColors.length],
-        borderWidth: 2,
-        tension: chartType === 'line' ? 0.4 : 0
-      };
-    });
+    const datasets = selectedY.map((yCol, idx) => ({
+      label: yCol,
+      data: labels.map(label => {
+        const values = groupedData[label][yCol];
+        // 对每个 X 值的所有 Y 值求和
+        return values.reduce((sum, val) => sum + val, 0);
+      }),
+      backgroundColor: chartType === 'pie' 
+        ? customColors 
+        : customColors[idx % customColors.length],
+      borderColor: customColors[idx % customColors.length],
+      borderWidth: 2,
+      fill: false,
+      tension: 0.4
+    }));
 
     return { labels, datasets };
-  }, [data, selectedX, selectedY, chartType, customColors, darkMode, xFilterEnabled, selectedXValues]);
+  }, [data, selectedX, selectedY, chartType, customColors, xFilterEnabled, selectedXValues]);
 
   const getChartOptions = (type) => {
     const baseOptions = {
@@ -228,43 +213,70 @@ export default function Home() {
         legend: {
           position: 'top',
           labels: {
-            color: darkMode ? '#e5e7eb' : '#374151',
-            font: { size: 13 }
+            font: { size: 14, weight: '600' },
+            color: darkMode ? '#ffffff' : '#0a2540',
+            padding: 16
           }
         },
         title: {
           display: !!chartTitle,
           text: chartTitle,
-          color: darkMode ? '#f3f4f6' : '#111827',
-          font: { size: 18, weight: 'bold' }
+          font: { size: 18, weight: '700' },
+          color: darkMode ? '#ffffff' : '#0a2540',
+          padding: { bottom: 24 }
         }
       }
     };
 
-    if (type === 'pie') return baseOptions;
+    if (type === 'pie') {
+      return {
+        ...baseOptions,
+        plugins: {
+          ...baseOptions.plugins,
+          legend: {
+            ...baseOptions.plugins.legend,
+            position: 'right'
+          }
+        }
+      };
+    }
 
     return {
       ...baseOptions,
       scales: {
-        x: {
-          ticks: { 
-            color: darkMode ? '#d1d5db' : '#4b5563',
-            font: { size: 12 }
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
           },
-          grid: { 
-            color: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' 
+          ticks: {
+            color: darkMode ? '#e0e0e0' : '#697386',
+            font: { size: 13 }
           }
         },
-        y: {
-          ticks: { 
-            color: darkMode ? '#d1d5db' : '#4b5563',
-            font: { size: 12 }
+        x: {
+          grid: {
+            display: false
           },
-          grid: { 
-            color: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' 
+          ticks: {
+            color: darkMode ? '#e0e0e0' : '#697386',
+            font: { size: 13 }
           }
         }
       }
+    };
+  };
+
+  const calculateStats = (column) => {
+    const values = data.map(row => parseFloat(row[column]) || 0).sort((a, b) => a - b);
+    const sum = values.reduce((a, b) => a + b, 0);
+    const mean = sum / values.length;
+    const median = values[Math.floor(values.length / 2)];
+    return {
+      mean,
+      median,
+      max: Math.max(...values),
+      min: Math.min(...values)
     };
   };
 
@@ -278,27 +290,26 @@ export default function Home() {
           String(val).toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
-      return String(row[filterColumn]).toLowerCase().includes(searchTerm.toLowerCase());
+      return String(row[filterColumn] || '').toLowerCase().includes(searchTerm.toLowerCase());
     });
   }, [data, searchTerm, filterColumn]);
 
   const sortedData = useMemo(() => {
     if (!sortConfig.key) return filteredData;
-
     return [...filteredData].sort((a, b) => {
       const aVal = a[sortConfig.key];
       const bVal = b[sortConfig.key];
       const aNum = parseFloat(aVal);
       const bNum = parseFloat(bVal);
 
-      let comparison = 0;
       if (!isNaN(aNum) && !isNaN(bNum)) {
-        comparison = aNum - bNum;
-      } else {
-        comparison = String(aVal).localeCompare(String(bVal));
+        return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
       }
-
-      return sortConfig.direction === 'asc' ? comparison : -comparison;
+      const aStr = String(aVal).toLowerCase();
+      const bStr = String(bVal).toLowerCase();
+      if (aStr < bStr) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aStr > bStr) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
     });
   }, [filteredData, sortConfig]);
 
@@ -315,30 +326,25 @@ export default function Home() {
     }));
   };
 
-  const handleYToggle = (header) => {
-    setSelectedY(prev =>
-      prev.includes(header)
-        ? prev.filter(h => h !== header)
-        : [...prev, header]
-    );
-  };  return (
-    <div className={`app-container ${darkMode ? 'dark' : ''}`}>
-      <div className="main-content">
-        <header className="app-header">
-          <div className="header-left">
-            <h1>数据可视化分析平台</h1>
-            {fileName && <span className="file-badge">{fileName}</span>}
-          </div>
+  const yAxisOptions = useMemo(() => {
+    return headers.filter(h => h !== selectedX);
+  }, [headers, selectedX]);
+
+  return (
+    <div className={darkMode ? 'dark' : ''}>
+      <div className="container">
+        <header className="header">
+          <h1>数据可视化分析工具</h1>
           <button 
-            className="theme-toggle" 
+            className="btn-dark-mode" 
             onClick={() => setDarkMode(!darkMode)}
-            title="切换主题"
+            aria-label="切换深色模式"
           >
             {darkMode ? '☀️' : '🌙'}
           </button>
         </header>
 
-        <main className="app-main">
+        <main className="main-content">
           {!data ? (
             <div 
               className={`upload-zone ${isDragging ? 'dragging' : ''}`}
@@ -348,47 +354,126 @@ export default function Home() {
               onClick={() => fileInputRef.current?.click()}
             >
               <div className="upload-icon">📊</div>
-              <h2>上传数据文件</h2>
-              <p>拖拽文件到此处，或点击选择文件</p>
-              <p className="file-hint">支持 .xlsx, .xls, .csv 格式</p>
+              <h2>拖拽文件到此处或点击上传</h2>
+              <p>支持 CSV, XLSX, XLS 格式</p>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={(e) => handleFileUpload(e.target.files[0])}
                 style={{ display: 'none' }}
+                accept=".csv,.xlsx,.xls"
+                onChange={(e) => handleFileUpload(e.target.files[0])}
               />
             </div>
           ) : (
             <>
-              <div className="controls-section">
+              <div className="file-info">
+                <span>📄 {fileName}</span>
+                <div className="file-actions">
+                  <button onClick={() => fileInputRef.current?.click()} className="btn-change">
+                    更换文件
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    style={{ display: 'none' }}
+                    accept=".csv,.xlsx,.xls"
+                    onChange={(e) => handleFileUpload(e.target.files[0])}
+                  />
+                </div>
+              </div>
+
+              {selectedY.length > 0 && (
+                <div className="stats-grid">
+                  {selectedY.slice(0, 2).map(col => {
+                    const stats = calculateStats(col);
+                    return (
+                      <div key={col} className="stat-card">
+                        <h4>{col} 统计</h4>
+                        <div className="stat-item">
+                          <span>平均值</span>
+                          <strong>{stats.mean.toFixed(2)}</strong>
+                        </div>
+                        <div className="stat-item">
+                          <span>中位数</span>
+                          <strong>{stats.median.toFixed(2)}</strong>
+                        </div>
+                        <div className="stat-item">
+                          <span>最大值</span>
+                          <strong>{stats.max.toFixed(2)}</strong>
+                        </div>
+                        <div className="stat-item">
+                          <span>最小值</span>
+                          <strong>{stats.min.toFixed(2)}</strong>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="controls-panel">
                 <div className="control-group">
                   <label>图表类型</label>
-                  <div className="button-group">
-                    <button
-                      className={chartType === 'line' ? 'active' : ''}
-                      onClick={() => setChartType('line')}
-                    >
-                      📈 折线图
-                    </button>
-                    <button
-                      className={chartType === 'bar' ? 'active' : ''}
-                      onClick={() => setChartType('bar')}
-                    >
-                      📊 柱状图
-                    </button>
-                    <button
-                      className={chartType === 'pie' ? 'active' : ''}
-                      onClick={() => setChartType('pie')}
-                      disabled={selectedY.length > 1}
-                    >
-                      🥧 饼图
-                    </button>
-                  </div>
+                  <select value={chartType} onChange={(e) => setChartType(e.target.value)}>
+                    <option value="line">折线图</option>
+                    <option value="bar">柱状图</option>
+                    <option value="pie">饼图</option>
+                  </select>
                 </div>
 
                 <div className="control-group">
-                  <label>图表标题（可选）</label>
+                  <label>X 轴</label>
+                  <select value={selectedX} onChange={(e) => {
+                    setSelectedX(e.target.value);
+                    setSelectedXValues([]);
+                  }}>
+                    {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+
+                <div className="control-group x-filter-inline">
+                  <label className="toggle-label">
+                    <span>启用筛选</span>
+                    <div 
+                      className={`toggle-switch ${xFilterEnabled ? 'active' : ''}`}
+                      onClick={() => setXFilterEnabled(!xFilterEnabled)}
+                    >
+                      <div className="toggle-slider"></div>
+                    </div>
+                  </label>
+                  {xFilterEnabled && (
+                    <button 
+                      className="btn-filter-inline" 
+                      onClick={() => setShowXFilterModal(true)}
+                    >
+                      筛选 ({selectedXValues.length}/{xAxisUniqueValues.length})
+                    </button>
+                  )}
+                </div>
+
+                <div className="control-group">
+                  <label>Y 轴 (最多 2 个)</label>
+                  <select 
+                    multiple 
+                    value={selectedY} 
+                    onChange={(e) => {
+                      const options = Array.from(e.target.selectedOptions, option => option.value);
+                      if (options.length <= 2) {
+                        setSelectedY(options);
+                      }
+                    }}
+                    className="y-axis-select"
+                    size={Math.min(yAxisOptions.length, 6)}
+                  >
+                    {yAxisOptions.map(h => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                  <small className="hint">按住 Ctrl/Cmd 多选，最多选 2 个</small>
+                </div>
+
+                <div className="control-group">
+                  <label>图表标题 (可选)</label>
                   <input
                     type="text"
                     value={chartTitle}
@@ -396,113 +481,34 @@ export default function Home() {
                     placeholder="输入图表标题..."
                   />
                 </div>
-
-                <div className="axis-controls">
-                  <div className="control-group">
-                    <label>X轴选择</label>
-                    <select value={selectedX} onChange={(e) => {
-                      setSelectedX(e.target.value);
-                      setSelectedXValues([]);
-                      setXFilterEnabled(false);
-                    }}>
-                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                  </div>
-
-                  <div className="control-group x-filter-group">
-                    <div className="filter-toggle">
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={xFilterEnabled}
-                          onChange={(e) => {
-                            setXFilterEnabled(e.target.checked);
-                            if (!e.target.checked) {
-                              setSelectedXValues([]);
-                            }
-                          }}
-                        />
-                        启用X轴筛选
-                      </label>
-                    </div>
-                    {xFilterEnabled && (
-                      <button
-                        className="btn-filter"
-                        onClick={() => setShowXFilterModal(true)}
-                      >
-                        筛选X轴数据 ({selectedXValues.length}/{xAxisUniqueValues.length})
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="control-group">
-                    <label>Y轴选择（可多选）</label>
-                    <div className="y-axis-dropdown">
-                      <div className="dropdown-trigger">
-                        <div className="selected-values">
-                          {selectedY.length === 0 ? '请选择Y轴' : selectedY.join(', ')}
-                        </div>
-                        <span className="dropdown-arrow">▼</span>
-                      </div>
-                      <div className="dropdown-menu">
-                        {headers.map(h => (
-                          <label key={h} className="dropdown-item">
-                            <input
-                              type="checkbox"
-                              checked={selectedY.includes(h)}
-                              onChange={() => handleYToggle(h)}
-                            />
-                            <span>{h}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={() => {
-                    setData(null);
-                    setFileName('');
-                    setHeaders([]);
-                    setSelectedX('');
-                    setSelectedY([]);
-                    setChartTitle('');
-                    setSelectedXValues([]);
-                    setXFilterEnabled(false);
-                  }} 
-                  className="btn-reset"
-                >
-                  重新上传
-                </button>
               </div>
 
               {showXFilterModal && (
                 <div className="modal-overlay" onClick={() => setShowXFilterModal(false)}>
                   <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                     <div className="modal-header">
-                      <h3>筛选 {selectedX} 的值</h3>
-                      <button className="modal-close" onClick={() => setShowXFilterModal(false)}>×</button>
+                      <h3>选择 X 轴数据</h3>
+                      <button className="modal-close" onClick={() => setShowXFilterModal(false)}>✕</button>
                     </div>
+
+                    <div className="modal-search">
+                      <input
+                        type="text"
+                        value={xFilterSearch}
+                        onChange={(e) => setXFilterSearch(e.target.value)}
+                        placeholder="输入关键词搜索..."
+                      />
+                    </div>
+
+                    <div className="modal-actions">
+                      <button onClick={handleSelectAllX} className="btn-action">全选</button>
+                      <button onClick={handleClearAllX} className="btn-action">清空</button>
+                    </div>
+
                     <div className="modal-body">
-                      <div className="filter-search">
-                        <input
-                          type="text"
-                          placeholder="输入关键词搜索..."
-                          value={xFilterSearch}
-                          onChange={(e) => setXFilterSearch(e.target.value)}
-                        />
-                      </div>
-                      <div className="filter-actions">
-                        <button onClick={handleSelectAllX}>全选</button>
-                        <button onClick={handleClearAllX}>清空</button>
-                        <span className="selection-count">
-                          已选: {selectedXValues.length} / {filteredXValues.length}
-                        </span>
-                      </div>
-                      <div className="filter-list">
-                        {filteredXValues.map(value => (
-                          <label key={value} className="filter-item">
+                      <div className="checkbox-grid">
+                        {filteredXValues.map((value, idx) => (
+                          <label key={idx} className="checkbox-item">
                             <input
                               type="checkbox"
                               checked={selectedXValues.includes(value)}
@@ -512,19 +518,23 @@ export default function Home() {
                           </label>
                         ))}
                       </div>
+                      {filteredXValues.length === 0 && (
+                        <div className="no-results">未找到匹配的数据</div>
+                      )}
                     </div>
+
                     <div className="modal-footer">
-                      <button className="btn-confirm" onClick={handleConfirmXFilter}>确定</button>
+                      <button onClick={handleConfirmXFilter} className="btn-confirm">
+                        完成
+                      </button>
                     </div>
                   </div>
                 </div>
-              )}              <div className="chart-section">
+              )}
+
+              <div className="chart-section">
                 <div className="chart-container">
-                  {!chartData ? (
-                    <div className="chart-placeholder">
-                      请选择X轴和Y轴数据
-                    </div>
-                  ) : (
+                  {chartData && (
                     <>
                       {chartType === 'line' && <Line ref={chartRef} data={chartData} options={getChartOptions('line')} />}
                       {chartType === 'bar' && <Bar ref={chartRef} data={chartData} options={getChartOptions('bar')} />}
